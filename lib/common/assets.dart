@@ -53,4 +53,9 @@ abstract final class Assets {
     'Anime4K_AutoDownscalePre_x4.glsl',
     'Anime4K_Upscale_CNN_x2_S.glsl',
   ];
+
+  // HDR 模拟：HDR Vision 逆色调映射（BT.2446a）的 mpv 移植版
+  static const mpvHdrShaders = [
+    'HDR_Vision_BT2446a.glsl',
+  ];
 }
