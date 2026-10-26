@@ -799,7 +799,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     return shadersDirPath = await AssetUtils.getOrCopy(
       'assets/shaders',
-      Assets.mpvAnime4KShaders.followedBy(Assets.mpvAnime4KShadersLite),
+      Assets.mpvAnime4KShaders
+          .followedBy(Assets.mpvAnime4KShadersLite)
+          .followedBy(Assets.mpvHdrShaders),
       path.join(appSupportDirPath, 'anime_shaders'),
     );
   }
@@ -807,6 +809,18 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   late final isAnim = _pgcType == 1 || _pgcType == 4;
   late final Rx<SuperResolutionType> superResolutionType =
       (isAnim ? Pref.superResolutionType : SuperResolutionType.disable).obs;
+
+  // HDR 模拟（HDR Vision 逆色调映射移植，见 assets/shaders/HDR_Vision_BT2446a.glsl）
+  // 与超分辨率着色器共用同一条 glsl-shaders 列表，可叠加使用。
+  late final RxBool hdrEnabled = Pref.hdrEnabled.obs;
+  Future<void> setHdrEnabled(bool value, [NativePlayer? pp]) async {
+    hdrEnabled.value = value;
+    if (!tempPlayerConf) {
+      setting.put(SettingBoxKey.hdrEnabled, value);
+    }
+    await setShader(null, pp);
+  }
+
   Future<void> setShader([SuperResolutionType? type, NativePlayer? pp]) async {
     if (type == null) {
       type = superResolutionType.value;
@@ -817,30 +831,30 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
     }
     pp ??= _videoPlayerController!;
-    switch (type) {
-      case SuperResolutionType.disable:
-        return pp.command(const ['change-list', 'glsl-shaders', 'clr', '']);
-      case SuperResolutionType.efficiency:
-        return pp.command([
-          'change-list',
-          'glsl-shaders',
-          'set',
-          PathUtils.buildShadersAbsolutePath(
-            await copyShadersToExternalDirectory,
-            Assets.mpvAnime4KShadersLite,
-          ),
-        ]);
-      case SuperResolutionType.quality:
-        return pp.command([
-          'change-list',
-          'glsl-shaders',
-          'set',
-          PathUtils.buildShadersAbsolutePath(
-            await copyShadersToExternalDirectory,
-            Assets.mpvAnime4KShaders,
-          ),
-        ]);
+    final shaderFiles = switch (type) {
+      SuperResolutionType.disable => <String>[],
+      SuperResolutionType.efficiency => [
+          ...Assets.mpvAnime4KShadersLite,
+        ],
+      SuperResolutionType.quality => [
+          ...Assets.mpvAnime4KShaders,
+        ],
+    };
+    if (hdrEnabled.value) {
+      shaderFiles.addAll(Assets.mpvHdrShaders);
     }
+    if (shaderFiles.isEmpty) {
+      return pp.command(const ['change-list', 'glsl-shaders', 'clr', '']);
+    }
+    return pp.command([
+      'change-list',
+      'glsl-shaders',
+      'set',
+      PathUtils.buildShadersAbsolutePath(
+        await copyShadersToExternalDirectory,
+        shaderFiles,
+      ),
+    ]);
   }
 
   Future<Player> _initPlayer() async {
@@ -913,7 +927,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         return;
       }
       _videoPlayerController = player;
-      if (isAnim && superResolutionType.value != .disable) {
+      if (isAnim && superResolutionType.value != .disable ||
+          hdrEnabled.value) {
         await setShader();
       }
     }
