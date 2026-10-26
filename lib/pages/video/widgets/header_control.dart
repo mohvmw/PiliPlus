@@ -491,6 +491,24 @@ class HeaderControlState extends State<HeaderControl>
                   descPosType: .subtitle,
                   descStyle: subTitleStyle,
                 ),
+                // HDR 模拟：HDR Vision 逆色调映射着色器，可与超分辨率叠加
+                Obx(
+                  () => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.hdr_on, size: 20),
+                    title: const Text('HDR 模拟', style: titleStyle),
+                    subtitle: const Text(
+                      '逆色调映射增强亮度动态范围，仅对 SDR 内容有效',
+                      style: subTitleStyle,
+                    ),
+                    trailing: Switch(
+                      value: plPlayerController.hdrEnabled.value,
+                      onChanged: (value) {
+                        plPlayerController.setHdrEnabled(value);
+                      },
+                    ),
+                  ),
+                ),
                 if (PlatformUtils.isMobile)
                   if (plPlayerController.videoPlayerController
                       case final player?)
