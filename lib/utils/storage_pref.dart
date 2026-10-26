@@ -481,6 +481,10 @@ abstract final class Pref {
     return superResolutionType ?? SuperResolutionType.disable;
   }
 
+  // HDR 模拟开关（HDR Vision 逆色调映射着色器）
+  static bool get hdrEnabled =>
+      _setting.get(SettingBoxKey.hdrEnabled, defaultValue: false);
+
   static bool get preInitPlayer =>
       _setting.get(SettingBoxKey.preInitPlayer, defaultValue: false);
 
